@@ -36,6 +36,7 @@ const VALIDATOR_FILE: &str = "validator-identity.yaml";
 const GENESIS_BLOB: &str = "genesis.blob";
 const ROOT_KEY: &str = "root_key";
 const ACCOUNTS_FILE: &str = "accounts.yaml";
+const NODES_FILE: &str = "nodes.yaml";
 
 const INITIAL_BALANCE: u64 = 100_000_000_000_000;
 
@@ -101,6 +102,10 @@ impl Node {
 			validator_network_key,
 			full_node_network_key,
 		})
+	}
+
+	fn api_address(&self) -> String {
+		format!("{}:{}", self.host, self.api_port)
 	}
 
 	fn validator_peer(&self) -> Result<(PeerId, Peer)> {
@@ -339,6 +344,10 @@ fn main() -> Result<()> {
 		.write_all(root_key.to_encoded_string()?.as_bytes())?;
 	File::create(prepare_dir.join(ACCOUNTS_FILE))?
 		.write_all(serde_yaml::to_string(&account_private_keys)?.as_bytes())?;
+	File::create(prepare_dir.join(NODES_FILE))?.write_all(
+		serde_yaml::to_string(&nodes.iter().map(|n| n.api_address()).collect::<Vec<_>>())?
+			.as_bytes(),
+	)?;
 	for (i, node) in nodes.iter().enumerate() {
 		let name = format!("n{}", i);
 		let deploy_dir = deploy_dir.join(&name);
