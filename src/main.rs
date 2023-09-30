@@ -326,11 +326,11 @@ fn main() -> Result<()> {
 
 	let validator_seeds = nodes
 		.iter()
-		.map(|n| n.validator_peer())
+		.map(Node::validator_peer)
 		.collect::<Result<PeerSet>>()?;
 	let vfn_seeds = nodes
 		.iter()
-		.map(|n| n.vfn_peer())
+		.map(Node::vfn_peer)
 		.collect::<Result<PeerSet>>()?;
 
 	let config = NodeConfig::get_default_validator_config();
@@ -345,8 +345,7 @@ fn main() -> Result<()> {
 	File::create(prepare_dir.join(ACCOUNTS_FILE))?
 		.write_all(serde_yaml::to_string(&account_private_keys)?.as_bytes())?;
 	File::create(prepare_dir.join(NODES_FILE))?.write_all(
-		serde_yaml::to_string(&nodes.iter().map(|n| n.api_address()).collect::<Vec<_>>())?
-			.as_bytes(),
+		serde_yaml::to_string(&nodes.iter().map(Node::api_address).collect::<Vec<_>>())?.as_bytes(),
 	)?;
 	for (i, node) in nodes.iter().enumerate() {
 		let name = format!("n{}", i);
