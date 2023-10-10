@@ -40,12 +40,17 @@ const NODES_FILE: &str = "nodes.yaml";
 
 const INITIAL_BALANCE: u64 = 100_000_000_000_000;
 
-fn new_peer(host: HostAndPort, public_key: x25519::PublicKey) -> Result<(PeerId, Peer)> {
-	let peer_id = account_address::from_identity_public_key(public_key);
-	let network_address = host.as_network_address(public_key)?;
+fn new_peer(
+	host: HostAndPort,
+	public_key: x25519::PublicKey,
+	peer_id: PeerId,
+) -> Result<(PeerId, Peer)> {
 	Ok((
 		peer_id,
-		Peer::from_addrs(PeerRole::Validator, vec![network_address]),
+		Peer::from_addrs(
+			PeerRole::Validator,
+			vec![host.as_network_address(public_key)?],
+		),
 	))
 }
 
@@ -54,8 +59,8 @@ fn set_network(
 	port: u16,
 	seeds: PeerSet,
 	private_key: x25519::PrivateKey,
+	peer_id: PeerId,
 ) -> Result<()> {
-	let peer_id = account_address::from_identity_public_key(private_key.public_key());
 	network.discovery_method = DiscoveryMethod::None;
 	network.listen_address = NetworkAddress::from_protocols(vec![
 		Protocol::Ip4(Ipv4Addr::UNSPECIFIED),
@@ -115,6 +120,7 @@ impl Node {
 				port: self.validator_port,
 			},
 			self.validator_network_key.public_key(),
+			self.account_address,
 		)
 	}
 
@@ -125,6 +131,7 @@ impl Node {
 				port: self.vfn_port,
 			},
 			self.full_node_network_key.public_key(),
+			self.account_address,
 		)
 	}
 
@@ -213,6 +220,7 @@ impl Node {
 			self.validator_port,
 			validator_seeds,
 			self.validator_network_key.to_owned(),
+			self.account_address,
 		)?;
 
 		let full_node_network = config
@@ -227,6 +235,7 @@ impl Node {
 			self.vfn_port,
 			vfn_seeds,
 			self.full_node_network_key.to_owned(),
+			self.account_address,
 		)?;
 
 		config.api.address.set_ip(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
