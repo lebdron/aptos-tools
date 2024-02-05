@@ -7,14 +7,14 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.71"
-aptos-cached-packages = { git = "https://github.com/aptos-labs/aptos-core", rev = "a52efba0f43342f654ed5ed861da2570ea77f218", version = "0.1.0" }
-aptos-config = { git = "https://github.com/aptos-labs/aptos-core", rev = "a52efba0f43342f654ed5ed861da2570ea77f218", version = "0.1.0" }
-aptos-crypto = { git = "https://github.com/aptos-labs/aptos-core", rev = "a52efba0f43342f654ed5ed861da2570ea77f218", version = "0.0.3", features = ["cloneable-private-keys", "fuzzing"] }
-aptos-genesis = { git = "https://github.com/aptos-labs/aptos-core", rev = "a52efba0f43342f654ed5ed861da2570ea77f218", version = "0.1.0" }
-aptos-keygen = { git = "https://github.com/aptos-labs/aptos-core", rev = "a52efba0f43342f654ed5ed861da2570ea77f218", version = "0.1.0" }
-aptos-logger = { git = "https://github.com/aptos-labs/aptos-core", rev = "a52efba0f43342f654ed5ed861da2570ea77f218", version = "0.1.0" }
-aptos-types = { git = "https://github.com/aptos-labs/aptos-core", rev = "a52efba0f43342f654ed5ed861da2570ea77f218", version = "0.0.3" }
-aptos-vm-genesis = { git = "https://github.com/aptos-labs/aptos-core", rev = "a52efba0f43342f654ed5ed861da2570ea77f218", version = "0.1.0" }
+aptos-cached-packages = { git = "https://github.com/aptos-labs/aptos-core", rev = "60f7f5ad5bdbf810f7844625d46d073da8d5ddb5", version = "0.1.0" }
+aptos-config = { git = "https://github.com/aptos-labs/aptos-core", rev = "60f7f5ad5bdbf810f7844625d46d073da8d5ddb5", version = "0.1.0" }
+aptos-crypto = { git = "https://github.com/aptos-labs/aptos-core", rev = "60f7f5ad5bdbf810f7844625d46d073da8d5ddb5", version = "0.0.3", features = ["cloneable-private-keys", "fuzzing"] }
+aptos-genesis = { git = "https://github.com/aptos-labs/aptos-core", rev = "60f7f5ad5bdbf810f7844625d46d073da8d5ddb5", version = "0.1.0" }
+aptos-keygen = { git = "https://github.com/aptos-labs/aptos-core", rev = "60f7f5ad5bdbf810f7844625d46d073da8d5ddb5", version = "0.1.0" }
+aptos-logger = { git = "https://github.com/aptos-labs/aptos-core", rev = "60f7f5ad5bdbf810f7844625d46d073da8d5ddb5", version = "0.1.0" }
+aptos-types = { git = "https://github.com/aptos-labs/aptos-core", rev = "60f7f5ad5bdbf810f7844625d46d073da8d5ddb5", version = "0.0.3" }
+aptos-vm-genesis = { git = "https://github.com/aptos-labs/aptos-core", rev = "60f7f5ad5bdbf810f7844625d46d073da8d5ddb5", version = "0.1.0" }
 bcs = { git = "https://github.com/aptos-labs/bcs.git", rev = "d31fab9d81748e2594be5cd5cdf845786a30562d" }
 clap = { version = "4.3.9", features = ["derive", "unstable-styles"] }
 rand = "0.7.3"
@@ -22,13 +22,14 @@ serde_yaml = "0.8.24"
 
 [patch.crates-io]
 merlin = { git = "https://github.com/aptos-labs/merlin" }
+x25519-dalek = { git = "https://github.com/aptos-labs/x25519-dalek", branch = "zeroize_v1" }
 
 [patch."https://github.com/aptos-labs/aptos-core"]
-aptos-cached-packages = { git = "https://github.com/lebdron/aptos-core", rev = "9ab1b13e1751198c92969f15eb6affa7aaac5fd1" }
-aptos-config = { git = "https://github.com/lebdron/aptos-core", rev = "9ab1b13e1751198c92969f15eb6affa7aaac5fd1" }
-aptos-crypto = { git = "https://github.com/lebdron/aptos-core", rev = "9ab1b13e1751198c92969f15eb6affa7aaac5fd1" }
-aptos-genesis = { git = "https://github.com/lebdron/aptos-core", rev = "9ab1b13e1751198c92969f15eb6affa7aaac5fd1" }
-aptos-keygen = { git = "https://github.com/lebdron/aptos-core", rev = "9ab1b13e1751198c92969f15eb6affa7aaac5fd1" }
-aptos-logger = { git = "https://github.com/lebdron/aptos-core", rev = "9ab1b13e1751198c92969f15eb6affa7aaac5fd1" }
-aptos-types = { git = "https://github.com/lebdron/aptos-core", rev = "9ab1b13e1751198c92969f15eb6affa7aaac5fd1" }
-aptos-vm-genesis = { git = "https://github.com/lebdron/aptos-core", rev = "9ab1b13e1751198c92969f15eb6affa7aaac5fd1" }
+aptos-cached-packages = { git = "https://github.com/lebdron/aptos-core", rev = "decc85d235282764a7f571e0d985d5b77f35cb3b" }
+aptos-config = { git = "https://github.com/lebdron/aptos-core", rev = "decc85d235282764a7f571e0d985d5b77f35cb3b" }
+aptos-crypto = { git = "https://github.com/lebdron/aptos-core", rev = "decc85d235282764a7f571e0d985d5b77f35cb3b" }
+aptos-genesis = { git = "https://github.com/lebdron/aptos-core", rev = "decc85d235282764a7f571e0d985d5b77f35cb3b" }
+aptos-keygen = { git = "https://github.com/lebdron/aptos-core", rev = "decc85d235282764a7f571e0d985d5b77f35cb3b" }
+aptos-logger = { git = "https://github.com/lebdron/aptos-core", rev = "decc85d235282764a7f571e0d985d5b77f35cb3b" }
+aptos-types = { git = "https://github.com/lebdron/aptos-core", rev = "decc85d235282764a7f571e0d985d5b77f35cb3b" }
+aptos-vm-genesis = { git = "https://github.com/lebdron/aptos-core", rev = "decc85d235282764a7f571e0d985d5b77f35cb3b" }

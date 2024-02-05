@@ -89,7 +89,7 @@ impl Node {
 	fn new(keygen: &mut KeyGen, offset: u16, host: DnsName) -> Result<Node> {
 		let account_key = keygen.generate_ed25519_private_key();
 		let account_address =
-			AuthenticationKey::ed25519(&account_key.public_key()).derived_address();
+			AuthenticationKey::ed25519(&account_key.public_key()).account_address();
 		let consensus_key = keygen.generate_bls12381_private_key();
 		let validator_network_key = keygen.generate_x25519_private_key()?;
 		let full_node_network_key = keygen.generate_x25519_private_key()?;
@@ -298,7 +298,7 @@ fn main() -> Result<()> {
 	let accounts = account_private_keys
 		.iter()
 		.map(|key| AccountBalance {
-			account_address: AuthenticationKey::ed25519(&key.public_key()).derived_address(),
+			account_address: AuthenticationKey::ed25519(&key.public_key()).account_address(),
 			balance: INITIAL_BALANCE,
 		})
 		.collect::<Vec<_>>();
