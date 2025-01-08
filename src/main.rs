@@ -206,6 +206,7 @@ impl Node {
 		config.consensus.safety_rules.initial_safety_rules_config =
 			InitialSafetyRulesConfig::from_file(
 				data_dir.join(VALIDATOR_FILE),
+				vec![],
 				config.base.waypoint.to_owned(),
 			);
 
@@ -328,6 +329,11 @@ fn main() -> Result<()> {
 			consensus_config: OnChainConsensusConfig::default(),
 			execution_config: OnChainExecutionConfig::default_for_genesis(),
 			gas_schedule: aptos_vm_genesis::default_gas_schedule(),
+            initial_features_override: None,
+            randomness_config_override: None,
+            jwk_consensus_config_override: None,
+            initial_jwks: vec![],
+            keyless_groth16_vk_override: None,
 		},
 	)?;
 	let waypoint = genesis_info.generate_waypoint()?;
