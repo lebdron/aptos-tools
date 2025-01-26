@@ -23,7 +23,10 @@ use aptos_keygen::KeyGen;
 use aptos_types::{
 	account_address::{self},
 	network_address::{DnsName, NetworkAddress, Protocol},
-	on_chain_config::{OnChainConsensusConfig, OnChainExecutionConfig},
+	on_chain_config::{
+		ConsensusAlgorithmConfig, OnChainConsensusConfig, OnChainExecutionConfig,
+		ValidatorTxnConfig,
+	},
 	transaction::authenticator::AuthenticationKey,
 	waypoint::Waypoint,
 	PeerId,
@@ -268,6 +271,10 @@ struct Args {
 	// Path to prepare directory
 	#[arg(short, long)]
 	prepare_dir: PathBuf,
+
+	// Optional flag to disable quorum store
+	#[arg(long)]
+	disable_quorum_store: bool,
 }
 
 fn main() -> Result<()> {
@@ -303,6 +310,14 @@ fn main() -> Result<()> {
 			balance: INITIAL_BALANCE,
 		})
 		.collect::<Vec<_>>();
+	let on_chain_consensus_config = if args.disable_quorum_store {
+		OnChainConsensusConfig::V3 {
+			alg: ConsensusAlgorithmConfig::default_with_quorum_store_disabled(),
+			vtxn: ValidatorTxnConfig::default_if_missing(),
+		}
+	} else {
+		OnChainConsensusConfig::default()
+	};
 	let mut genesis_info = GenesisInfo::new(
 		layout.chain_id,
 		root_key.public_key(),
@@ -326,14 +341,14 @@ fn main() -> Result<()> {
 			voting_power_increase_limit: layout.voting_power_increase_limit,
 			employee_vesting_start: layout.employee_vesting_start,
 			employee_vesting_period_duration: layout.employee_vesting_period_duration,
-			consensus_config: OnChainConsensusConfig::default(),
+			consensus_config: on_chain_consensus_config,
 			execution_config: OnChainExecutionConfig::default_for_genesis(),
 			gas_schedule: aptos_vm_genesis::default_gas_schedule(),
-            initial_features_override: None,
-            randomness_config_override: None,
-            jwk_consensus_config_override: None,
-            initial_jwks: vec![],
-            keyless_groth16_vk_override: None,
+			initial_features_override: None,
+			randomness_config_override: None,
+			jwk_consensus_config_override: None,
+			initial_jwks: vec![],
+			keyless_groth16_vk_override: None,
 		},
 	)?;
 	let waypoint = genesis_info.generate_waypoint()?;
