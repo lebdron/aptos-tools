@@ -6,8 +6,13 @@ use std::{
 };
 
 use anyhow::{bail, Context, Result};
-use aptos_config::config::{
-	DiscoveryMethod, Identity, IdentityBlob, InitialSafetyRulesConfig, NetworkConfig, NodeConfig, OnDiskStorageConfig, OverrideNodeConfig, Peer, PeerRole, PeerSet, PersistableConfig, SafetyRulesService, SecureBackend, WaypointConfig
+use aptos_config::{
+	config::{
+		DiscoveryMethod, Identity, IdentityBlob, InitialSafetyRulesConfig, NetworkConfig,
+		NodeConfig, OnDiskStorageConfig, OverrideNodeConfig, PersistableConfig, SafetyRulesService,
+		SecureBackend, WaypointConfig,
+	},
+	network_id::NetworkId,
 };
 use aptos_crypto::{
 	bls12381, ed25519::Ed25519PrivateKey, x25519, PrivateKey, ValidCryptoMaterialStringExt,
@@ -27,7 +32,6 @@ use aptos_types::{
 	},
 	transaction::authenticator::AuthenticationKey,
 	waypoint::Waypoint,
-	PeerId,
 };
 use aptos_vm_genesis::AccountBalance;
 use clap::Parser;
@@ -41,41 +45,11 @@ const NODES_FILE: &str = "nodes.yaml";
 
 const INITIAL_BALANCE: u64 = 100_000_000_000_000;
 
-fn new_peer(
-	host: HostAndPort,
-	public_key: x25519::PublicKey,
-	peer_id: PeerId,
-) -> Result<(PeerId, Peer)> {
-	Ok((
-		peer_id,
-		Peer::from_addrs(
-			PeerRole::Validator,
-			vec![host.as_network_address(public_key)?],
-		),
-	))
-}
-
-// fn set_network(
-// 	network: &mut NetworkConfig,
-// 	port: u16,
-// 	seeds: PeerSet,
-// 	private_key: x25519::PrivateKey,
-// 	peer_id: PeerId,
-// ) -> Result<()> {
-// 	network.discovery_method = DiscoveryMethod::None;
-// 	network.listen_address = NetworkAddress::from_protocols(vec![
-// 		Protocol::Ip4(Ipv4Addr::UNSPECIFIED),
-// 		Protocol::Tcp(port),
-// 	])?;
-// 	network.seeds = seeds;
-// 	network.identity = Identity::from_config(private_key, peer_id);
-// 	Ok(())
-// }
-
 struct Node {
 	host: DnsName,
 	validator_port: u16,
 	vfn_port: u16,
+	pfn_port: u16,
 	api_port: u16,
 	inspection_port: u16,
 	backup_port: u16,
@@ -99,6 +73,7 @@ impl Node {
 			host,
 			validator_port: 6000 + offset,
 			vfn_port: 7000 + offset,
+			pfn_port: 11000 + offset,
 			api_port: 8000 + offset,
 			inspection_port: 9000 + offset,
 			backup_port: 10000 + offset,
@@ -112,28 +87,6 @@ impl Node {
 
 	fn api_address(&self) -> String {
 		format!("{}:{}", self.host, self.api_port)
-	}
-
-	fn validator_peer(&self) -> Result<(PeerId, Peer)> {
-		new_peer(
-			HostAndPort {
-				host: self.host.to_owned(),
-				port: self.validator_port,
-			},
-			self.validator_network_key.public_key(),
-			self.account_address,
-		)
-	}
-
-	fn vfn_peer(&self) -> Result<(PeerId, Peer)> {
-		new_peer(
-			HostAndPort {
-				host: self.host.to_owned(),
-				port: self.vfn_port,
-			},
-			self.full_node_network_key.public_key(),
-			self.account_address,
-		)
 	}
 
 	fn new_validator_config(
@@ -162,7 +115,7 @@ impl Node {
 			full_node_network_public_key: Some(self.full_node_network_key.public_key()),
 			full_node_host: Some(HostAndPort {
 				host: self.host.to_owned(),
-				port: self.vfn_port,
+				port: self.pfn_port,
 			}),
 			stake_amount,
 			commission_percentage,
@@ -179,23 +132,12 @@ impl Node {
 		}
 	}
 
-	fn new_node_config(
+	fn new_validator_node_config(
 		&self,
 		template: &NodeConfig,
 		data_dir: &PathBuf,
 		waypoint: &Waypoint,
-		// validator_seeds: &PeerSet,
-		// vfn_seeds: &PeerSet,
 	) -> Result<OverrideNodeConfig> {
-		// let mut validator_seeds = validator_seeds.to_owned();
-		// let validator_id =
-		// 	account_address::from_identity_public_key(self.validator_network_key.public_key());
-		// validator_seeds.remove(&validator_id);
-		// let mut vfn_seeds = vfn_seeds.to_owned();
-		// let vfn_id =
-		// 	account_address::from_identity_public_key(self.full_node_network_key.public_key());
-		// vfn_seeds.remove(&vfn_id);
-
 		let mut config = template.to_owned();
 
 		config.base.data_dir = data_dir.to_owned();
@@ -222,7 +164,8 @@ impl Node {
 			Protocol::Ip4(Ipv4Addr::UNSPECIFIED),
 			Protocol::Tcp(self.validator_port),
 		])?;
-		validator_network.identity = Identity::from_config(self.validator_network_key.to_owned(), self.account_address);
+		validator_network.identity =
+			Identity::from_config(self.validator_network_key.to_owned(), self.account_address);
 
 		let full_node_network = config
 			.full_node_networks
@@ -236,7 +179,63 @@ impl Node {
 			Protocol::Ip4(Ipv4Addr::UNSPECIFIED),
 			Protocol::Tcp(self.vfn_port),
 		])?;
-		full_node_network.identity = Identity::from_config(self.full_node_network_key.to_owned(), self.account_address);
+		full_node_network.identity =
+			Identity::from_config(self.full_node_network_key.to_owned(), self.account_address);
+
+		config.full_node_networks.push(NetworkConfig {
+			network_id: NetworkId::Public,
+			discovery_method: DiscoveryMethod::Onchain,
+			listen_address: NetworkAddress::from_protocols(vec![
+				Protocol::Ip4(Ipv4Addr::UNSPECIFIED),
+				Protocol::Tcp(self.pfn_port),
+			])?,
+			identity: Identity::from_config(
+				self.full_node_network_key.to_owned(),
+				self.account_address,
+			),
+			..Default::default()
+		});
+
+		config.api.address.set_ip(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
+		config.api.address.set_port(self.api_port);
+		config.inspection_service.port = self.inspection_port;
+		config
+			.storage
+			.backup_service_address
+			.set_port(self.backup_port);
+
+		Ok(OverrideNodeConfig::new_with_default_base(config))
+	}
+
+	fn new_public_full_node_config(
+		&self,
+		template: &NodeConfig,
+		data_dir: &PathBuf,
+		waypoint: &Waypoint,
+	) -> Result<OverrideNodeConfig> {
+		let mut config = template.to_owned();
+
+		config.base.data_dir = data_dir.to_owned();
+		config.base.waypoint = WaypointConfig::FromConfig(*waypoint);
+
+		config.execution.genesis_file_location = data_dir.join(GENESIS_BLOB);
+
+		let full_node_network = config
+			.full_node_networks
+			.first_mut()
+			.context("full node network missing")?;
+		if !full_node_network.network_id.is_public_network() {
+			bail!("expected pfn to be present");
+		}
+		full_node_network.discovery_method = DiscoveryMethod::Onchain;
+		full_node_network.listen_address = NetworkAddress::from_protocols(vec![
+			Protocol::Ip4(Ipv4Addr::UNSPECIFIED),
+			Protocol::Tcp(self.pfn_port),
+		])?;
+		full_node_network.identity = Identity::from_config(
+			self.full_node_network_key.to_owned(),
+			account_address::from_identity_public_key(self.full_node_network_key.public_key()),
+		);
 
 		config.api.address.set_ip(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
 		config.api.address.set_port(self.api_port);
@@ -271,6 +270,9 @@ struct Args {
 	// Optional flag to disable quorum store
 	#[arg(long)]
 	disable_quorum_store: bool,
+
+	#[arg(long)]
+	num_validators: Option<usize>,
 }
 
 fn main() -> Result<()> {
@@ -292,6 +294,21 @@ fn main() -> Result<()> {
 			nodes.push(Node::new(&mut keygen, i, addr.to_string().try_into()?)?)
 		}
 	}
+
+	let num_validators = args.num_validators.unwrap_or(nodes.len());
+	if num_validators > nodes.len() {
+		bail!(
+			"Number of validators ({}) exceeds number of nodes ({})",
+			num_validators,
+			nodes.len()
+		);
+	}
+	let (validators, pfns) = nodes.split_at(num_validators);
+	println!(
+		"Using {} validators and {} public full nodes",
+		validators.len(),
+		pfns.len()
+	);
 
 	let mut keygen = KeyGen::from_seed([1; 32]);
 	let layout = Layout::default();
@@ -318,7 +335,7 @@ fn main() -> Result<()> {
 		layout.chain_id,
 		root_key.public_key(),
 		accounts,
-		nodes
+		validators
 			.iter()
 			.map(|n| n.new_validator_config(layout.min_stake, 0, true))
 			.collect(),
@@ -350,16 +367,8 @@ fn main() -> Result<()> {
 	let waypoint = genesis_info.generate_waypoint()?;
 	let genesis = genesis_info.get_genesis();
 
-	// let validator_seeds = nodes
-	// 	.iter()
-	// 	.map(Node::validator_peer)
-	// 	.collect::<Result<PeerSet>>()?;
-	// let vfn_seeds = nodes
-	// 	.iter()
-	// 	.map(Node::vfn_peer)
-	// 	.collect::<Result<PeerSet>>()?;
-
-	let config = NodeConfig::get_default_validator_config();
+	let validator_config = NodeConfig::get_default_validator_config();
+	let pfn_config = NodeConfig::get_default_pfn_config();
 
 	let prepare_dir = args.prepare_dir;
 	if prepare_dir.exists() {
@@ -373,7 +382,7 @@ fn main() -> Result<()> {
 	File::create(prepare_dir.join(NODES_FILE))?.write_all(
 		serde_yaml::to_string(&nodes.iter().map(Node::api_address).collect::<Vec<_>>())?.as_bytes(),
 	)?;
-	for (i, node) in nodes.iter().enumerate() {
+	for (i, node) in validators.iter().enumerate() {
 		let name = format!("n{}", i);
 		let deploy_dir = deploy_dir.join(&name);
 		let prepare_dir = prepare_dir.join(&name);
@@ -384,14 +393,19 @@ fn main() -> Result<()> {
 		File::create(prepare_dir.join(VALIDATOR_FILE))?
 			.write_all(serde_yaml::to_string(&identity)?.as_bytes())?;
 
-		node.new_node_config(
-			&config,
-			&deploy_dir,
-			&waypoint,
-			// &validator_seeds,
-			// &vfn_seeds,
-		)?
-		.save_config(prepare_dir.join(CONFIG_FILE))?;
+		node.new_validator_node_config(&validator_config, &deploy_dir, &waypoint)?
+			.save_config(prepare_dir.join(CONFIG_FILE))?;
+	}
+
+	for (i, node) in pfns.iter().enumerate() {
+		let name = format!("n{}", i + validators.len());
+		let deploy_dir = deploy_dir.join(&name);
+		let prepare_dir = prepare_dir.join(&name);
+		fs::create_dir_all(&prepare_dir)?;
+		File::create(prepare_dir.join(GENESIS_BLOB))?.write_all(&bcs::to_bytes(genesis)?)?;
+
+		node.new_public_full_node_config(&pfn_config, &deploy_dir, &waypoint)?
+			.save_config(prepare_dir.join(CONFIG_FILE))?;
 	}
 
 	Ok(())
